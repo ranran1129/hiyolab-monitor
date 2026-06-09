@@ -2,14 +2,15 @@ name: HiyoLab Monitor
 
 on:
   schedule:
-    - cron: '*/5 * * * *'  # 5分ごとに実行
-  workflow_dispatch:         # 手動実行ボタンも使えるようにする
+    - cron: '*/5 * * * *'  # 5分ごとに起動（内部で1分×5回チェック）
+    - cron: '0 0 * * *'    # 毎日0時(UTC)=日本時間9時にハートビート通知
+  workflow_dispatch:
 
 jobs:
   check:
     runs-on: ubuntu-latest
     permissions:
-      contents: write        # last_comment_id.txt をコミットするために必要
+      contents: write
 
     steps:
       - uses: actions/checkout@v4
@@ -22,17 +23,19 @@ jobs:
       - name: Install dependencies
         run: pip install requests beautifulsoup4
 
-      - name: Run monitor
+      - name: Run monitor (1分×5回ループ)
         env:
           LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
           LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
           SESSION_COOKIE: ${{ secrets.SESSION_COOKIE }}
-        run: python monitor_gha.py
-
-      - name: Save state
+          HEARTBEAT: ${{ github.event.schedule == '0 0 * * *' && 'true' || 'false' }}
         run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git add last_comment_id.txt
-          git diff --cached --quiet || git commit -m "update last_comment_id"
-          git push
+          for i in 1 2 3 4 5; do
+            echo "=== チェック $i/5 ==="
+            python monitor_gha.py
+            git config user.name "github-actions"
+            git config user.email "github-actions@github.com"
+            git add last_comment_id.txt
+            git diff --cached --quiet || git commit -m "update last_comment_id" && git push
+            [ $i -lt 5 ] && sleep 60
+          done

@@ -56,9 +56,16 @@ def send_line(text):
     resp.raise_for_status()
 
 
+# ハートビート（毎日9時の確認通知）
+if os.environ.get("HEARTBEAT") == "true":
+    send_line("【監視中】ひよりとーく を正常に監視しています。")
+    print("ハートビート通知を送信しました")
+    sys.exit(0)
+
 comment_id, summary = fetch_latest_comment()
 if comment_id is None:
     print("コメント取得失敗（ログイン切れの可能性あり）")
+    send_line("【警告】ひよりとーく の取得に失敗しました。\nCookieが期限切れの可能性があります。")
     sys.exit(0)
 
 last_id = load_last_id()
