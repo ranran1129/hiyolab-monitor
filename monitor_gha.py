@@ -8,14 +8,11 @@ STATE_FILE = "last_comment_id.txt"
 LINE_CHANNEL_ACCESS_TOKEN = os.environ["LINE_CHANNEL_ACCESS_TOKEN"]
 LINE_USER_ID = os.environ["LINE_USER_ID"]
 SESSION_COOKIE = os.environ.get("SESSION_COOKIE", "")
-SCHEDULE = os.environ.get("SCHEDULE", "")
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     "Cookie": SESSION_COOKIE,
 }
-
-HEARTBEAT_SCHEDULES = {"0 0 * * *", "0 9 * * *"}
 
 
 def fetch_latest_comment():
@@ -59,13 +56,6 @@ def send_line(text):
     )
     resp.raise_for_status()
 
-
-# ハートビート
-if SCHEDULE in HEARTBEAT_SCHEDULES:
-    label = "朝9時" if SCHEDULE == "0 0 * * *" else "夕方18時"
-    send_line(f"【{label} 定時報告】ひよりとーく を正常に監視しています。")
-    print(f"ハートビート通知送信（{label}）")
-    sys.exit(0)
 
 # 通常監視
 comment_id, summary = fetch_latest_comment()
