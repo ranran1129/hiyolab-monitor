@@ -14,9 +14,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
@@ -30,12 +31,21 @@ jobs:
           SESSION_COOKIE: ${{ secrets.SESSION_COOKIE }}
           HEARTBEAT: ${{ github.event.schedule == '0 0 * * *' && 'true' || 'false' }}
         run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
           for i in 1 2 3 4 5; do
             echo "=== チェック $i/5 ==="
-            python monitor_gha.py
-            git config user.name "github-actions"
-            git config user.email "github-actions@github.com"
-            git add last_comment_id.txt
-            git diff --cached --quiet || git commit -m "update last_comment_id" && git push
-            [ $i -lt 5 ] && sleep 60
+            python monitor_gha.py || echo "スクリプトエラー（継続）"
+            if [ $i -lt 5 ]; then
+              sleep 60
+            fi
           done
+
+          git add last_comment_id.txt
+          if ! git diff --cached --quiet; then
+            git commit -m "update last_comment_id"
+            git push
+          else
+            echo "コミットなし（変化なし）"
+          fi
