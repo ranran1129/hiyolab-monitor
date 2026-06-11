@@ -12,6 +12,8 @@ jobs:
   update:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4.2.2
+
       - name: Secretを更新
         env:
           GH_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
