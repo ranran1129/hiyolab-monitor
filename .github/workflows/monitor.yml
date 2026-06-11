@@ -2,8 +2,9 @@ name: HiyoLab Monitor
 
 on:
   schedule:
-    - cron: '*/5 * * * *'  # 5分ごとに起動（内部で1分×5回チェック）
-    - cron: '0 0 * * *'    # 毎日0時(UTC)=日本時間9時にハートビート通知
+    - cron: '*/5 * * * *'  # 監視（内部で1分×5回）
+    - cron: '0 0 * * *'    # 朝9時(JST) ハートビート
+    - cron: '0 9 * * *'    # 夕方18時(JST) ハートビート
   workflow_dispatch:
 
 jobs:
@@ -24,16 +25,23 @@ jobs:
       - name: Install dependencies
         run: pip install requests beautifulsoup4
 
-      - name: Run monitor (1分×5回ループ)
+      - name: Run monitor
         env:
           LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
           LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
           SESSION_COOKIE: ${{ secrets.SESSION_COOKIE }}
-          HEARTBEAT: ${{ github.event.schedule == '0 0 * * *' && 'true' || 'false' }}
+          SCHEDULE: ${{ github.event.schedule }}
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
 
+          # ハートビートの場合は1回だけ実行
+          if [ "$SCHEDULE" = "0 0 * * *" ] || [ "$SCHEDULE" = "0 9 * * *" ]; then
+            python monitor_gha.py
+            exit 0
+          fi
+
+          # 通常監視: 1分×5回ループ
           for i in 1 2 3 4 5; do
             echo "=== チェック $i/5 ==="
             python monitor_gha.py || echo "スクリプトエラー（継続）"
@@ -46,6 +54,22 @@ jobs:
           if ! git diff --cached --quiet; then
             git commit -m "update last_comment_id"
             git push
-          else
-            echo "コミットなし（変化なし）"
           fi
+
+      - name: 停止通知
+        if: failure()
+        env:
+          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+          LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
+        run: |
+          python - <<'EOF'
+          import os, requests
+          token = os.environ["LINE_CHANNEL_ACCESS_TOKEN"]
+          user_id = os.environ["LINE_USER_ID"]
+          requests.post(
+              "https://api.line.me/v2/bot/message/push",
+              headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+              json={"to": user_id, "messages": [{"type": "text", "text": "【エラー】ひよりとーく の監視でエラーが発生しました。\nGitHub Actionsのログを確認してください。\nhttps://github.com/ranran1129/hiyolab-monitor/actions"}]},
+              timeout=10
+          )
+          EOF

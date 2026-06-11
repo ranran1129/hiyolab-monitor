@@ -1,0 +1,39 @@
+name: Cookie更新
+
+on:
+  workflow_dispatch:
+    inputs:
+      session_cookie:
+        description: '新しいセッションCookie（ブラウザのF12→コンソール→document.cookieの値）'
+        required: true
+        type: string
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Secretを更新
+        env:
+          GH_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+        run: |
+          gh secret set SESSION_COOKIE \
+            --body "${{ inputs.session_cookie }}" \
+            --repo ${{ github.repository }}
+          echo "SESSION_COOKIE を更新しました"
+
+      - name: LINE通知
+        env:
+          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+          LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
+        run: |
+          python3 - <<'EOF'
+          import os, requests
+          token = os.environ["LINE_CHANNEL_ACCESS_TOKEN"]
+          user_id = os.environ["LINE_USER_ID"]
+          requests.post(
+              "https://api.line.me/v2/bot/message/push",
+              headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+              json={"to": user_id, "messages": [{"type": "text", "text": "【Cookie更新完了】\n新しいCookieを設定しました。監視を再開します。"}]},
+              timeout=10
+          )
+          EOF
