@@ -15,36 +15,37 @@ HEADERS = {
 }
 
 
-def fetch_latest_comment():
+def fetch_artist_comments() -> list[tuple[str, str, str]]:
+    """アーティストのコメント一覧を (id, nick, text) で返す（新しい順）"""
     resp = requests.get(TARGET_URL, headers=HEADERS, timeout=15)
     resp.raise_for_status()
     soup = BeautifulSoup(resp.text, "html.parser")
-    comments = soup.select("ul.list--comment li.replies")
-    if not comments:
-        return None, None
-    latest = comments[0]
-    txt_el = latest.select_one("p.txt[id^='comment-body-']")
-    if not txt_el:
-        return None, None
-    comment_id = txt_el["id"].replace("comment-body-", "")
-    nick_el = latest.select_one("p.nick")
-    nick = nick_el.get_text(strip=True) if nick_el else "？"
-    text = txt_el.get_text(strip=True)
-    return comment_id, f"{nick}：{text}"
+    results = []
+    for li in soup.select("ul.list--comment li.replies"):
+        txt_el = li.select_one("p.txt[id^='comment-body-']")
+        if not txt_el:
+            continue
+        comment_id = txt_el["id"].replace("comment-body-", "")
+        nick_el = li.select_one("p.nick")
+        nick = nick_el.get_text(strip=True) if nick_el else "？"
+        text = txt_el.get_text(strip=True)
+        results.append((comment_id, nick, text))
+    return results
 
 
-def load_last_id():
+def load_last_id() -> str | None:
     if os.path.exists(STATE_FILE):
-        return open(STATE_FILE).read().strip()
+        val = open(STATE_FILE).read().strip()
+        return val if val else None
     return None
 
 
-def save_id(comment_id):
+def save_id(comment_id: str) -> None:
     with open(STATE_FILE, "w") as f:
         f.write(comment_id)
 
 
-def send_line(text):
+def send_line(text: str) -> None:
     resp = requests.post(
         "https://api.line.me/v2/bot/message/push",
         headers={
@@ -57,9 +58,9 @@ def send_line(text):
     resp.raise_for_status()
 
 
-# 通常監視
-comment_id, summary = fetch_latest_comment()
-if comment_id is None:
+# コメント取得
+comments = fetch_artist_comments()
+if not comments:
     print("コメント取得失敗（ログイン切れの可能性あり）")
     send_line(
         "【警告】ひよりとーく の取得に失敗しました。\n"
@@ -70,13 +71,28 @@ if comment_id is None:
     sys.exit(1)
 
 last_id = load_last_id()
+latest_id = comments[0][0]  # 最新のID
 
+# 初回実行
 if last_id is None:
-    save_id(comment_id)
-    print(f"初回実行: ID={comment_id} を保存")
-elif int(comment_id) > int(last_id):
-    save_id(comment_id)
-    send_line(f"【新着】ひよりとーく が更新されました！\n\n{summary}\n\n{TARGET_URL}")
-    print(f"新着検知 (ID:{comment_id}) → LINE送信完了")
-else:
-    print(f"変化なし (最新ID:{comment_id})")
+    save_id(latest_id)
+    print(f"初回実行: ID={latest_id} を保存")
+    sys.exit(0)
+
+# last_id より新しいコメントを古い順に並べる
+new_comments = [c for c in comments if int(c[0]) > int(last_id)]
+new_comments.sort(key=lambda c: int(c[0]))  # 古い順に並べ替え
+
+if not new_comments:
+    print(f"変化なし (最新ID:{latest_id})")
+    sys.exit(0)
+
+# 新しいコメントを1件ずつ通知
+for comment_id, nick, text in new_comments:
+    msg = f"【新着】ひよりとーく\n\n{nick}：{text}\n\n{TARGET_URL}"
+    send_line(msg)
+    print(f"新着通知送信: ID={comment_id} / {nick}：{text[:30]}")
+
+# 最新IDを保存
+save_id(latest_id)
+print(f"ID更新: {last_id} → {latest_id}")

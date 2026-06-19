@@ -1,11 +1,18 @@
 name: HiyoLab Monitor
 
 on:
+  # cron-job.org から叩かれる（遅延なし・毎分）
+  # GitHub内部スケジューラーは遅延するためバックアップとして残す
   schedule:
-    - cron: '*/5 * * * *'  # 監視（内部で1分×5回）
+    - cron: '*/5 * * * *'
     - cron: '0 0 * * *'    # 朝9時(JST) ハートビート
     - cron: '0 9 * * *'    # 夕方18時(JST) ハートビート
   workflow_dispatch:
+    inputs:
+      trigger_source:
+        description: 'トリガー元（cronjob/manual）'
+        required: false
+        default: 'manual'
 
 jobs:
   # ハートビート専用ジョブ（朝9時・夕方18時のみ実行）
@@ -32,9 +39,11 @@ jobs:
           print(f"ハートビート送信（{label}）")
           EOF
 
-  # 通常監視ジョブ（5分ごと＋手動実行）
+  # 通常監視ジョブ
   check:
-    if: github.event.schedule == '*/5 * * * *' || github.event_name == 'workflow_dispatch'
+    if: >
+      github.event.schedule == '*/5 * * * *' ||
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -51,7 +60,7 @@ jobs:
       - name: Install dependencies
         run: pip install requests beautifulsoup4
 
-      - name: Run monitor (1分×5回ループ)
+      - name: Run monitor
         env:
           LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
           LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
@@ -59,15 +68,7 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-
-          for i in 1 2 3 4 5; do
-            echo "=== チェック $i/5 ==="
-            python monitor_gha.py || echo "スクリプトエラー（継続）"
-            if [ $i -lt 5 ]; then
-              sleep 60
-            fi
-          done
-
+          python monitor_gha.py || echo "スクリプトエラー"
           git add last_comment_id.txt
           if ! git diff --cached --quiet; then
             git commit -m "update last_comment_id"
