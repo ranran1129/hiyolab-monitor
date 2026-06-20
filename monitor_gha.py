@@ -38,10 +38,10 @@ def check_heartbeat() -> None:
     hour = now.hour
     today = now.strftime("%Y-%m-%d")
 
-    if hour not in (9, 18):
+    if hour not in (9, 12, 18):
         return
 
-    label = "朝9時" if hour == 9 else "夕方18時"
+    label = "朝9時" if hour == 9 else ("テスト12時" if hour == 12 else "夕方18時")
     key = f"{today}-{hour}"
 
     last = ""
