@@ -1,12 +1,8 @@
 name: HiyoLab Monitor
 
 on:
-  # cron-job.org から叩かれる（遅延なし・毎分）
-  # GitHub内部スケジューラーは遅延するためバックアップとして残す
   schedule:
-    - cron: '*/5 * * * *'
-    - cron: '0 0 * * *'    # 朝9時(JST) ハートビート
-    - cron: '0 9 * * *'    # 夕方18時(JST) ハートビート
+    - cron: '*/5 * * * *'  # バックアップ用（cron-job.orgがメイン）
   workflow_dispatch:
     inputs:
       trigger_source:
@@ -15,35 +11,7 @@ on:
         default: 'manual'
 
 jobs:
-  # ハートビート専用ジョブ（朝9時・夕方18時のみ実行）
-  heartbeat:
-    if: github.event.schedule == '0 0 * * *' || github.event.schedule == '0 9 * * *'
-    runs-on: ubuntu-latest
-    steps:
-      - name: ハートビート通知
-        env:
-          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
-          LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
-          SCHEDULE: ${{ github.event.schedule }}
-        run: |
-          python3 - <<'EOF'
-          import os, requests
-          schedule = os.environ["SCHEDULE"]
-          label = "朝9時" if schedule == "0 0 * * *" else "夕方18時"
-          requests.post(
-              "https://api.line.me/v2/bot/message/push",
-              headers={"Authorization": f"Bearer {os.environ['LINE_CHANNEL_ACCESS_TOKEN']}", "Content-Type": "application/json"},
-              json={"to": os.environ["LINE_USER_ID"], "messages": [{"type": "text", "text": f"【{label} 定時報告】ひよりとーく を正常に監視しています。"}]},
-              timeout=10
-          )
-          print(f"ハートビート送信（{label}）")
-          EOF
-
-  # 通常監視ジョブ
   check:
-    if: >
-      github.event.schedule == '*/5 * * * *' ||
-      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -69,9 +37,9 @@ jobs:
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           python monitor_gha.py || echo "スクリプトエラー"
-          git add last_comment_id.txt
+          git add last_comment_id.txt last_heartbeat.txt
           if ! git diff --cached --quiet; then
-            git commit -m "update last_comment_id"
+            git commit -m "update state"
             git push
           fi
 
