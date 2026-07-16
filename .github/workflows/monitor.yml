@@ -2,13 +2,18 @@ name: HiyoLab Monitor
 
 on:
   schedule:
-    - cron: '*/5 * * * *'  # バックアップ用（cron-job.orgがメイン）
+    - cron: '*/5 * * * *'   # バックアップ用（cron-job.orgがメイン）
+    - cron: '* 14-15 * * *' # 日付変更前後（23:00〜01:59 JST）は1分おきで高頻度チェック
   workflow_dispatch:
     inputs:
       trigger_source:
         description: 'トリガー元（cronjob/manual）'
         required: false
         default: 'manual'
+
+concurrency:
+  group: hiyolab-monitor
+  cancel-in-progress: false
 
 jobs:
   check:
@@ -37,10 +42,13 @@ jobs:
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           python monitor_gha.py || echo "スクリプトエラー"
+          python monitor_tv_programs.py || echo "スクリプトエラー"
           git add last_comment_id.txt
           [ -f last_heartbeat.txt ] && git add last_heartbeat.txt
+          [ -f tv_program_state.json ] && git add tv_program_state.json
           if ! git diff --cached --quiet; then
             git commit -m "update state"
+            git pull --rebase
             git push
           fi
 
