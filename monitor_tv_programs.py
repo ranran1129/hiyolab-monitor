@@ -4,7 +4,7 @@ from functools import partial
 from urllib.parse import quote
 
 import requests
-from bs4 import BeautifulSoup, NavigableString
+from bs4 import BeautifulSoup
 
 LINE_CHANNEL_ACCESS_TOKEN = os.environ["LINE_CHANNEL_ACCESS_TOKEN"]
 LINE_USER_ID = os.environ["LINE_USER_ID"]
@@ -16,8 +16,8 @@ HEADERS = {
 }
 
 TALENTS = [
-    {"key": "hiyori", "name": "濱岸ひより", "thetv_id": "2000028145"},
-    {"key": "kawada", "name": "河田陽菜", "thetv_id": "2000028139"},
+    {"key": "hiyori", "name": "濱岸ひより"},
+    {"key": "kawada", "name": "河田陽菜"},
 ]
 
 
@@ -96,34 +96,6 @@ def fetch_jcom(name: str) -> dict[str, str]:
     return results
 
 
-def fetch_thetv(person_id: str) -> dict[str, str]:
-    """WEBザテレビジョンの出演予定を program_id -> 表示テキスト で返す"""
-    resp = requests.get(
-        f"https://thetv.jp/person/{person_id}/tv/",
-        headers=HEADERS,
-        timeout=15,
-    )
-    resp.raise_for_status()
-    soup = BeautifulSoup(resp.text, "html.parser")
-
-    results = {}
-    for li in soup.select("div.program_info li.thumblist__item"):
-        link = li.select_one("a[href^='/program/']")
-        title_el = li.select_one("p.item-text")
-        schedule_el = li.select_one("p.item-schedule")
-        if not link or not title_el or not schedule_el:
-            continue
-        program_id = link["href"]
-        title = title_el.get_text(strip=True)
-        # item-schedule の閉じタグが省略されており、後続の item-sub (「出演」等) が
-        # 子要素として誤って取り込まれるため、直下のテキストノードだけを拾う
-        schedule = "".join(
-            c for c in schedule_el.children if isinstance(c, NavigableString)
-        ).strip()
-        results[program_id] = f"{title}\n{schedule}"
-    return results
-
-
 def check_source(state: dict, state_key: str, fetch_fn, name: str, source_label: str, link: str) -> None:
     error_flags = state.setdefault("_error_flags", {})
 
@@ -170,7 +142,6 @@ def main() -> None:
     for talent in TALENTS:
         key = talent["key"]
         name = talent["name"]
-        thetv_id = talent["thetv_id"]
         encoded = quote(name)
 
         check_source(
@@ -188,14 +159,6 @@ def main() -> None:
             name,
             "J:COMテレビ番組ガイド",
             f"https://tvguide.myjcom.jp/search/event/?keyword={encoded}",
-        )
-        check_source(
-            state,
-            f"{key}_thetv",
-            partial(fetch_thetv, thetv_id),
-            name,
-            "WEBザテレビジョン",
-            f"https://thetv.jp/person/{thetv_id}/tv/",
         )
 
     save_state(state)
