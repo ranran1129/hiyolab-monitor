@@ -38,5 +38,11 @@
     "/program/0000955101/372/",
     "/program/0000946300/234/",
     "/program/0000955101/374/"
-  ]
+  ],
+  "_error_counts": {
+    "hiyori_bangumi": 0,
+    "hiyori_jcom": 1,
+    "kawada_bangumi": 0,
+    "kawada_jcom": 1
+  }
 }
