@@ -120,6 +120,7 @@ def check_source(state: dict, state_key: str, fetch_fn, name: str, source_label:
     error_counts[state_key] = 0
     if error_flags.get(state_key):
         error_flags[state_key] = False
+        send_line(f"【復旧】{name}（{source_label}）の番組情報取得が復旧しました。新着検知を再開します。")
 
     known_ids = state.get(state_key)
 
