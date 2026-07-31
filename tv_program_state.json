@@ -3,8 +3,8 @@
     "kawada_bangumi": false,
     "hiyori_thetv": false,
     "hiyori_bangumi": false,
-    "hiyori_jcom": true,
-    "kawada_jcom": true
+    "hiyori_jcom": false,
+    "kawada_jcom": false
   },
   "hiyori_bangumi": [
     "Al5wQwA6sAM",
@@ -43,8 +43,8 @@
   ],
   "_error_counts": {
     "hiyori_bangumi": 0,
-    "hiyori_jcom": 9,
+    "hiyori_jcom": 0,
     "kawada_bangumi": 0,
-    "kawada_jcom": 9
+    "kawada_jcom": 0
   }
 }
