@@ -70,32 +70,6 @@ def fetch_bangumi(name: str) -> dict[str, str]:
     return results
 
 
-def fetch_jcom(name: str) -> dict[str, str]:
-    """J:COMテレビ番組ガイドの検索結果を cid -> 表示テキスト で返す"""
-    resp = requests.post(
-        "https://tvguide.myjcom.jp/api/mypage/get_searchresult/",
-        data={"keyword": name, "offset": 0},
-        headers=HEADERS,
-        timeout=15,
-    )
-    resp.raise_for_status()
-    data = resp.json()
-
-    results = {}
-    if data.get("status") != "success":
-        return results
-
-    for item in data.get("body", {}).get("value", []):
-        cid = item["cid"]
-        title = item.get("title", "?")
-        date = item.get("date", "")
-        dow = item.get("day_of_week", "")
-        start = item.get("start_time", "")
-        channel = item.get("channel_name", "")
-        results[cid] = f"{title}\n{date}{dow} {start}　{channel}"
-    return results
-
-
 ERROR_NOTIFY_THRESHOLD = 3  # この回数だけ連続で失敗したらエラー通知する（一過性の失敗は無視）
 
 
@@ -158,14 +132,6 @@ def main() -> None:
             name,
             "番組表.Gガイド",
             f"https://bangumi.org/search?q={encoded}&area_code=23",
-        )
-        check_source(
-            state,
-            f"{key}_jcom",
-            partial(fetch_jcom, name),
-            name,
-            "J:COMテレビ番組ガイド",
-            f"https://tvguide.myjcom.jp/search/event/?keyword={encoded}",
         )
 
     save_state(state)
