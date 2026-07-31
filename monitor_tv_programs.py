@@ -96,22 +96,28 @@ def fetch_jcom(name: str) -> dict[str, str]:
     return results
 
 
+ERROR_NOTIFY_THRESHOLD = 3  # この回数だけ連続で失敗したらエラー通知する（一過性の失敗は無視）
+
+
 def check_source(state: dict, state_key: str, fetch_fn, name: str, source_label: str, link: str) -> None:
     error_flags = state.setdefault("_error_flags", {})
+    error_counts = state.setdefault("_error_counts", {})
 
     try:
         current = fetch_fn()
     except Exception as e:
         print(f"[{state_key}] 取得エラー: {e}")
-        if not error_flags.get(state_key):
+        error_counts[state_key] = error_counts.get(state_key, 0) + 1
+        if error_counts[state_key] >= ERROR_NOTIFY_THRESHOLD and not error_flags.get(state_key):
             send_line(
-                f"【エラー】{name}（{source_label}）の番組情報取得に失敗しました。\n"
+                f"【エラー】{name}（{source_label}）の番組情報取得に{ERROR_NOTIFY_THRESHOLD}回連続で失敗しました。\n"
                 f"{e}\n\n"
                 "復旧するまでこのソースの新着検知は止まっています。"
             )
             error_flags[state_key] = True
         return
 
+    error_counts[state_key] = 0
     if error_flags.get(state_key):
         error_flags[state_key] = False
 
