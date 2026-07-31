@@ -13,7 +13,8 @@
     "Al6gQwBGQAM",
     "Al6wQwBJQAM",
     "Al6wQg7nAAM",
-    "Al7AQwBL0AM"
+    "Al7AQwBL0AM",
+    "Al7QQwBOUAM"
   ],
   "hiyori_jcom": [
     "2_15206958",
@@ -41,8 +42,8 @@
   ],
   "_error_counts": {
     "hiyori_bangumi": 0,
-    "hiyori_jcom": 2,
+    "hiyori_jcom": 0,
     "kawada_bangumi": 0,
-    "kawada_jcom": 0
+    "kawada_jcom": 1
   }
 }
