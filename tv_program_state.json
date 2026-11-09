@@ -38,6 +38,13 @@
     "hiyori_bangumi": 0,
     "hiyori_jcom": 1,
     "kawada_bangumi": 0,
-    "kawada_jcom": 5
-  }
+    "kawada_jcom": 5,
+    "hiyori_bangumi_nationwide": 0,
+    "kawada_bangumi_nationwide": 0
+  },
+  "hiyori_bangumi_nationwide": [
+    "AmS3A4KI4AM",
+    "AmT9woDf0AM"
+  ],
+  "kawada_bangumi_nationwide": []
 }
